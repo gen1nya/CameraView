@@ -24,6 +24,7 @@ public class CameraOptions {
     private Set<Flash> supportedFlash = new HashSet<>(4);
     private Set<Hdr> supportedHdr = new HashSet<>(2);
     private Set<Size> supportedPictureSizes = new HashSet<>(15);
+    private Set<Size> supportedPreviewSizes = new HashSet<>(15);
     private Set<AspectRatio> supportedPictureAspectRatio = new HashSet<>(4);
 
     private boolean zoomSupported;
@@ -93,6 +94,13 @@ public class CameraOptions {
             int height = flipSizes ? size.width : size.height;
             supportedPictureSizes.add(new Size(width, height));
             supportedPictureAspectRatio.add(AspectRatio.of(width, height));
+        }
+
+        List<Camera.Size> previewSizes = params.getSupportedPreviewSizes();
+        for (Camera.Size size : previewSizes) {
+            int width = flipSizes ? size.height : size.width;
+            int height = flipSizes ? size.width : size.height;
+            supportedPreviewSizes.add(new Size(width, height));
         }
     }
 
@@ -170,6 +178,12 @@ public class CameraOptions {
     public Set<Size> getSupportedPictureSizes() {
         // TODO v2: return a Collection
         return Collections.unmodifiableSet(supportedPictureSizes);
+    }
+
+    @NonNull
+    public Set<Size> getSupportedPreviewSizes() {
+        // TODO v2: return a Collection
+        return Collections.unmodifiableSet(supportedPreviewSizes);
     }
 
 
