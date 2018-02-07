@@ -76,6 +76,9 @@ class Camera2 extends CameraController {
     }
 
     @Override
+    void enableShooterSound(boolean enable) {}
+
+    @Override
     void setLocation(Location location) {
 
     }

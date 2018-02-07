@@ -52,7 +52,6 @@ public class CameraView extends FrameLayout {
     // Self managed parameters
     private int mJpegQuality;
     private boolean mCropOutput;
-    private boolean mPlaySounds;
     private HashMap<Gesture, GestureAction> mGestureMap = new HashMap<>(4);
 
     // Components
@@ -60,7 +59,6 @@ public class CameraView extends FrameLayout {
     private CameraPreview mCameraPreview;
     private OrientationHelper mOrientationHelper;
     private CameraController mCameraController;
-    private MediaActionSound mSound;
     /* for tests */ List<CameraListener> mListeners = new CopyOnWriteArrayList<>();
     /* for tests */ List<FrameProcessor> mFrameProcessors = new CopyOnWriteArrayList<>();
 
@@ -96,7 +94,6 @@ public class CameraView extends FrameLayout {
         // Self managed
         int jpegQuality = a.getInteger(R.styleable.CameraView_cameraJpegQuality, DEFAULT_JPEG_QUALITY);
         boolean cropOutput = a.getBoolean(R.styleable.CameraView_cameraCropOutput, DEFAULT_CROP_OUTPUT);
-        boolean playSounds = a.getBoolean(R.styleable.CameraView_cameraPlaySounds, DEFAULT_PLAY_SOUNDS);
 
         // Camera controller params
         Facing facing = Facing.fromValue(a.getInteger(R.styleable.CameraView_cameraFacing, Facing.DEFAULT.value()));
@@ -170,7 +167,6 @@ public class CameraView extends FrameLayout {
         // Apply self managed
         setCropOutput(cropOutput);
         setJpegQuality(jpegQuality);
-        setPlaySounds(playSounds);
 
         // Apply camera controller params
         setFacing(facing);
@@ -916,6 +912,11 @@ public class CameraView extends FrameLayout {
         return mCameraController.getFlash();
     }
 
+    public void enableShooterSound(boolean enable){
+        mCameraController.enableShooterSound(enable);
+    }
+
+
 
     /**
      * Controls the audio mode.
@@ -1345,10 +1346,10 @@ public class CameraView extends FrameLayout {
 
     @SuppressLint("NewApi")
     private void playSound(int soundType) {
-        if (mPlaySounds) {
+        /*if (mPlaySounds) {
             if (mSound == null) mSound = new MediaActionSound();
             mSound.play(soundType);
-        }
+        }*/
     }
 
     /**
@@ -1359,9 +1360,7 @@ public class CameraView extends FrameLayout {
      *
      * @param playSounds whether to play sound effects
      */
-    public void setPlaySounds(boolean playSounds) {
-        mPlaySounds = playSounds && Build.VERSION.SDK_INT >= 16;
-    }
+    public void setPlaySounds(boolean playSounds) {}
 
     /**
      * Gets the current sound effect behavior.
@@ -1370,7 +1369,7 @@ public class CameraView extends FrameLayout {
      * @return whether sound effects are supported
      */
     public boolean getPlaySounds() {
-        return mPlaySounds;
+        return false;
     }
 
     /**
@@ -1460,10 +1459,10 @@ public class CameraView extends FrameLayout {
 
         @Override
         public void onShutter(boolean shouldPlaySound) {
-            if (shouldPlaySound && mPlaySounds) {
+            /*if (shouldPlaySound && mPlaySounds) {
                 //noinspection all
-                playSound(MediaActionSound.SHUTTER_CLICK);
-            }
+                //playSound(MediaActionSound.SHUTTER_CLICK);
+            }*/
         }
 
         /**
@@ -1579,10 +1578,10 @@ public class CameraView extends FrameLayout {
             mUiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (success && mPlaySounds) {
+                    /*if (success && mPlaySounds) {
                         //noinspection all
                         playSound(MediaActionSound.FOCUS_COMPLETE);
-                    }
+                    }*/
 
                     if (gesture != null && mGestureMap.get(gesture) == GestureAction.FOCUS_WITH_MARKER) {
                         mTapGestureLayout.onFocusEnd(success);

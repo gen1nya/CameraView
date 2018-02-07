@@ -368,14 +368,11 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
 
 
     @Override
-    void setAudio(Audio audio) {
-        if (mAudio != audio) {
-            if (mIsCapturingVideo) {
-                LOG.w("Audio setting was changed while recording. " +
-                        "Changes will take place starting from next video");
-            }
-            mAudio = audio;
-        }
+    void setAudio(Audio audio) {}
+
+    @Override
+    void enableShooterSound(boolean enable) {
+        mCamera.enableShutterSound(enable);
     }
 
     @Override
@@ -430,37 +427,7 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
 
 
     @Override
-    void setVideoQuality(VideoQuality videoQuality) {
-        final VideoQuality old = mVideoQuality;
-        mVideoQuality = videoQuality;
-        schedule(mVideoQualityTask, true, new Runnable() {
-            @Override
-            public void run() {
-                if (mIsCapturingVideo) {
-                    // TODO: actually any call to getParameters() could fail while recording a video.
-                    // See. https://stackoverflow.com/questions/14941625/
-                    mVideoQuality = old;
-                    throw new IllegalStateException("Can't change video quality while recording a video.");
-                }
-
-                if (mSessionType == SessionType.VIDEO) {
-                    // Change capture size to a size that fits the video aspect ratio.
-                    Size oldSize = mPictureSize;
-                    mPictureSize = computePictureSize();
-                    if (!mPictureSize.equals(oldSize)) {
-                        // New video quality triggers a new aspect ratio.
-                        // Go on and see if preview size should change also.
-                        Camera.Parameters params = mCamera.getParameters();
-                        params.setPictureSize(mPictureSize.getWidth(), mPictureSize.getHeight());
-                        mCamera.setParameters(params);
-                        onSurfaceChanged();
-                    }
-                    LOG.i("setVideoQuality:", "captureSize:", mPictureSize);
-                    LOG.i("setVideoQuality:", "previewSize:", mPreviewSize);
-                }
-            }
-        });
-    }
+    void setVideoQuality(VideoQuality videoQuality) {}
 
     @Override
     void capturePicture() {
@@ -470,8 +437,6 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
             public void run() {
                 LOG.v("capturePicture: performing.", mIsCapturingImage);
                 if (mIsCapturingImage) return;
-                if (mIsCapturingVideo && !mCameraOptions.isVideoSnapshotSupported()) return;
-
                 mIsCapturingImage = true;
                 final int sensorToOutput = computeSensorToOutputOffset();
                 final int sensorToView = computeSensorToViewOffset();
@@ -504,60 +469,7 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
 
 
     @Override
-    void captureSnapshot() {
-        LOG.v("captureSnapshot: scheduling");
-        schedule(null, true, new Runnable() {
-            @Override
-            public void run() {
-                LOG.v("captureSnapshot: performing.", mIsCapturingImage);
-                if (mIsCapturingImage) return;
-                // This won't work while capturing a video.
-                // Switch to capturePicture.
-                if (mIsCapturingVideo) {
-                    capturePicture();
-                    return;
-                }
-                mIsCapturingImage = true;
-                mCamera.setOneShotPreviewCallback(new Camera.PreviewCallback() {
-                    @Override
-                    public void onPreviewFrame(final byte[] data, Camera camera) {
-                        mCameraCallbacks.onShutter(true);
-
-                        // Got to rotate the preview frame, since byte[] data here does not include
-                        // EXIF tags automatically set by camera. So either we add EXIF, or we rotate.
-                        // Adding EXIF to a byte array, unfortunately, is hard.
-                        final int sensorToOutput = computeSensorToOutputOffset();
-                        final int sensorToView = computeSensorToViewOffset();
-                        final boolean outputMatchesView = (sensorToOutput + sensorToView + 180) % 180 == 0;
-                        final boolean outputFlip = mFacing == Facing.FRONT;
-                        final boolean flip = sensorToOutput % 180 != 0;
-                        final int preWidth = mPreviewSize.getWidth();
-                        final int preHeight = mPreviewSize.getHeight();
-                        final int postWidth = flip ? preHeight : preWidth;
-                        final int postHeight = flip ? preWidth : preHeight;
-                        final int format = mPreviewFormat;
-                        WorkerHandler.run(new Runnable() {
-                            @Override
-                            public void run() {
-
-                                LOG.v("captureSnapshot: rotating.");
-                                byte[] rotatedData = RotationHelper.rotate(data, preWidth, preHeight, sensorToOutput);
-                                LOG.v("captureSnapshot: rotated.");
-                                YuvImage yuv = new YuvImage(rotatedData, format, postWidth, postHeight, null);
-                                mCameraCallbacks.processSnapshot(yuv, outputMatchesView, outputFlip);
-                                mIsCapturingImage = false;
-                            }
-                        });
-
-                        // It seems that the buffers are already cleared here, so we need to allocate again.
-                        mCamera.setPreviewCallbackWithBuffer(null); // Release anything left
-                        mCamera.setPreviewCallbackWithBuffer(Camera1.this); // Add ourselves
-                        mFrameManager.allocate(ImageFormat.getBitsPerPixel(mPreviewFormat), mPreviewSize);
-                    }
-                });
-            }
-        });
-    }
+    void captureSnapshot() {}
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
@@ -590,113 +502,16 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
 
 
     @Override
-    void startVideo(@NonNull final File videoFile) {
-        schedule(mStartVideoTask, true, new Runnable() {
-            @Override
-            public void run() {
-                if (mIsCapturingVideo) return;
-                if (mSessionType == SessionType.VIDEO) {
-                    mVideoFile = videoFile;
-                    mIsCapturingVideo = true;
-                    initMediaRecorder();
-                    try {
-                        mMediaRecorder.prepare();
-                        mMediaRecorder.start();
-                    } catch (Exception e) {
-                        LOG.e("Error while starting MediaRecorder. Swallowing.", e);
-                        mVideoFile = null;
-                        mCamera.lock();
-                        endVideoImmediately();
-                    }
-                } else {
-                    throw new IllegalStateException("Can't record video while session type is picture");
-                }
-            }
-        });
-    }
+    void startVideo(@NonNull final File videoFile) {}
 
     @Override
-    void endVideo() {
-        schedule(null, false, new Runnable() {
-            @Override
-            public void run() {
-                endVideoImmediately();
-            }
-        });
-    }
+    void endVideo() {}
 
     @WorkerThread
-    private void endVideoImmediately() {
-        LOG.i("endVideoImmediately:", "is capturing:", mIsCapturingVideo);
-        mIsCapturingVideo = false;
-        if (mMediaRecorder != null) {
-            try {
-                mMediaRecorder.stop();
-            } catch (Exception e) {
-                // This can happen if endVideo() is called right after startVideo(). We don't care.
-                LOG.w("endVideoImmediately:", "Error while closing media recorder. Swallowing", e);
-            }
-            mMediaRecorder.release();
-            mMediaRecorder = null;
-        }
-        if (mVideoFile != null) {
-            mCameraCallbacks.dispatchOnVideoTaken(mVideoFile);
-            mVideoFile = null;
-        }
-    }
+    private void endVideoImmediately() {}
 
     @WorkerThread
-    private void initMediaRecorder() {
-        mMediaRecorder = new MediaRecorder();
-        mCamera.unlock();
-        mMediaRecorder.setCamera(mCamera);
-
-        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-        if (mAudio == Audio.ON) {
-            // Must be called before setOutputFormat.
-            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-        }
-        CamcorderProfile profile = getCamcorderProfile();
-        mMediaRecorder.setOutputFormat(profile.fileFormat);
-        mMediaRecorder.setVideoFrameRate(profile.videoFrameRate);
-        mMediaRecorder.setVideoSize(profile.videoFrameWidth, profile.videoFrameHeight);
-        mMediaRecorder.setVideoEncoder(profile.videoCodec);
-        mMediaRecorder.setVideoEncodingBitRate(profile.videoBitRate);
-        if (mAudio == Audio.ON) {
-            mMediaRecorder.setAudioChannels(profile.audioChannels);
-            mMediaRecorder.setAudioSamplingRate(profile.audioSampleRate);
-            mMediaRecorder.setAudioEncoder(profile.audioCodec);
-            mMediaRecorder.setAudioEncodingBitRate(profile.audioBitRate);
-        }
-
-        if (mLocation != null) {
-            mMediaRecorder.setLocation((float) mLocation.getLatitude(),
-                    (float) mLocation.getLongitude());
-        }
-
-        mMediaRecorder.setOutputFile(mVideoFile.getAbsolutePath());
-        mMediaRecorder.setOrientationHint(computeSensorToOutputOffset());
-
-        //If the user sets a max file size, set it to the max file size
-        if(mVideoMaxSizeInBytes > 0) {
-            mMediaRecorder.setMaxFileSize(mVideoMaxSizeInBytes);
-
-            //Attach a listener to the media recorder to listen for file size notifications
-            mMediaRecorder.setOnInfoListener(new MediaRecorder.OnInfoListener() {
-                @Override
-                public void onInfo(MediaRecorder mediaRecorder, int i, int i1) {
-                    switch (i){
-                        case MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED:{
-                            endVideoImmediately();
-                            break;
-                        }
-                    }
-
-                }
-            });
-        }
-        // Not needed. mMediaRecorder.setPreviewDisplay(mPreview.getSurface());
-    }
+    private void initMediaRecorder() {}
 
     // -----------------
     // Zoom and simpler stuff.

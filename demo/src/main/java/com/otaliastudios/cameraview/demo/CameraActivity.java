@@ -45,7 +45,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 
         camera = findViewById(R.id.camera);
         camera.addCameraListener(new CameraListener() {
-            public void onCameraOpened(CameraOptions options) { onOpened(); }
+            public void onCameraOpened(CameraOptions options) {
+                camera.enableShooterSound(false);
+                onOpened();
+            }
             public void onPictureTaken(byte[] jpeg) { onPicture(jpeg); }
 
             @Override
@@ -153,6 +156,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         mCaptureNativeSize = camera.getPictureSize();
         message("Capturing picture...", false);
         camera.capturePicture();
+        camera.setAudio(null);
     }
 
     private void captureVideo() {

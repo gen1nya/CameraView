@@ -305,6 +305,8 @@ abstract class CameraController implements
     // Just set.
     abstract void setAudio(Audio audio);
 
+    abstract void enableShooterSound(boolean enable);
+
     // Throw if capturing. If in video session, recompute capture size, and, if needed, preview size.
     abstract void setVideoQuality(VideoQuality videoQuality);
 
