@@ -372,7 +372,7 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
 
     @Override
     void enableShooterSound(boolean enable) {
-        mCamera.enableShutterSound(enable);
+        if (isCameraAvailable()) mCamera.enableShutterSound(enable);
     }
 
     @Override
