@@ -443,7 +443,7 @@ class Camera1 extends CameraController implements Camera.PreviewCallback, Camera
                 final boolean outputMatchesView = (sensorToOutput + sensorToView + 180) % 180 == 0;
                 final boolean outputFlip = mFacing == Facing.FRONT;
                 Camera.Parameters params = mCamera.getParameters();
-                params.setRotation(sensorToOutput);
+                //params.setRotation(sensorToOutput);
                 mCamera.setParameters(params);
                 mCamera.takePicture(
                         new Camera.ShutterCallback() {
