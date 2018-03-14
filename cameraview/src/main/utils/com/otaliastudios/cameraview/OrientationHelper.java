@@ -27,7 +27,7 @@ class OrientationHelper {
             @Override
             public void onOrientationChanged(int orientation) {
                 int or = 0;
-                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) {
+                /*if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) {
                     or = 0;
                 } else if (orientation >= 315 || orientation < 45) {
                     or = 0;
@@ -37,11 +37,11 @@ class OrientationHelper {
                     or = 180;
                 } else if (orientation >= 225 && orientation < 315) {
                     or = 270;
-                }
+                }*/
 
                 if (or != mDeviceOrientation) {
                     mDeviceOrientation = or;
-                    mCallback.onDeviceOrientationChanged(mDeviceOrientation);
+                    mCallback.onDeviceOrientationChanged(or/*mDeviceOrientation*/);
                 }
             }
         };
