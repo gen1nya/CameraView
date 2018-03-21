@@ -1,3 +1,6 @@
+### v1.4.3
+ - test
+
 ### v1.4.1
 
 - Fixed a bug that would flip the front camera preview on some devices ([#112][112])
